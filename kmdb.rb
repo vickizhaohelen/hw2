@@ -75,16 +75,97 @@
 # ====================
 # Christian Bale
 
+# Generate models and tables, according to the domain model.
+# rails generate model Studio name:string
+# rails generate model Movie title:string release_year:integer mpaa_rating:string studio:references
+# rails generate model Actor first_name:string last_name:string agent:references
+# rails generate model Agent name:string
+# rails generate model Casting movie:references actor:references character_name:string
+# rails db:migrate
+
 # Delete existing data, so you'll start fresh each time this script is run.
 # Use `Model.destroy_all` code.
-# TODO!
-
-# Generate models and tables, according to the domain model.
-# TODO!
+Casting.destroy_all
+Movie.destroy_all
+Actor.destroy_all
+Studio.destroy_all
 
 # Insert data into the database that reflects the sample data shown above.
 # Do not use hard-coded foreign key IDs.
-# TODO!
+puts "Inserting studios..."
+warner = Studio.create!(name: "Warner Bros.")
+Studio.create!(name: "Universal Pictures")
+Studio.create!(name: "Paramount Pictures")
+
+puts "Inserting movies..."
+bb = Movie.create!(
+  title: "Batman Begins",
+  release_year: 2005,
+  mpaa_rating: "PG-13",
+  studio: warner
+)
+
+tdk = Movie.create!(
+  title: "The Dark Knight",
+  release_year: 2008,
+  mpaa_rating: "PG-13",
+  studio: warner
+)
+
+tdkr = Movie.create!(
+  title: "The Dark Knight Rises",
+  release_year: 2012,
+  mpaa_rating: "PG-13",
+  studio: warner
+)
+
+puts "Inserting actors..."
+actors = {
+  "Christian Bale" => Actor.create!(first_name: "Christian", last_name: "Bale"),
+  "Michael Caine" => Actor.create!(first_name: "Michael", last_name: "Caine"),
+  "Liam Neeson" => Actor.create!(first_name: "Liam", last_name: "Neeson"),
+  "Katie Holmes" => Actor.create!(first_name: "Katie", last_name: "Holmes"),
+  "Gary Oldman" => Actor.create!(first_name: "Gary", last_name: "Oldman"),
+  "Heath Ledger" => Actor.create!(first_name: "Heath", last_name: "Ledger"),
+  "Aaron Eckhart" => Actor.create!(first_name: "Aaron", last_name: "Eckhart"),
+  "Maggie Gyllenhaal" => Actor.create!(first_name: "Maggie", last_name: "Gyllenhaal"),
+  "Tom Hardy" => Actor.create!(first_name: "Tom", last_name: "Hardy"),
+  "Joseph Gordon-Levitt" => Actor.create!(first_name: "Joseph", last_name: "Gordon-Levitt"),
+  "Anne Hathaway" => Actor.create!(first_name: "Anne", last_name: "Hathaway")
+}
+
+puts "Inserting castings..."
+Casting.create!(movie: bb, actor: actors["Christian Bale"], character_name: "Bruce Wayne")
+Casting.create!(movie: bb, actor: actors["Michael Caine"], character_name: "Alfred")
+Casting.create!(movie: bb, actor: actors["Liam Neeson"], character_name: "Ra's al Ghul")
+Casting.create!(movie: bb, actor: actors["Katie Holmes"], character_name: "Rachel Dawes")
+Casting.create!(movie: bb, actor: actors["Gary Oldman"], character_name: "Commissioner Gordon")
+
+Casting.create!(movie: tdk, actor: actors["Christian Bale"], character_name: "Bruce Wayne")
+Casting.create!(movie: tdk, actor: actors["Heath Ledger"], character_name: "Joker")
+Casting.create!(movie: tdk, actor: actors["Aaron Eckhart"], character_name: "Harvey Dent")
+Casting.create!(movie: tdk, actor: actors["Michael Caine"], character_name: "Alfred")
+Casting.create!(movie: tdk, actor: actors["Maggie Gyllenhaal"], character_name: "Rachel Dawes")
+
+Casting.create!(movie: tdkr, actor: actors["Christian Bale"], character_name: "Bruce Wayne")
+Casting.create!(movie: tdkr, actor: actors["Gary Oldman"], character_name: "Commissioner Gordon")
+Casting.create!(movie: tdkr, actor: actors["Tom Hardy"], character_name: "Bane")
+Casting.create!(movie: tdkr, actor: actors["Joseph Gordon-Levitt"], character_name: "John Blake")
+Casting.create!(movie: tdkr, actor: actors["Anne Hathaway"], character_name: "Selina Kyle")
+
+class Agent < ApplicationRecord
+  has_many :actors
+end
+class Agent < ApplicationRecord
+  has_many :actors
+end
+
+caa = Agent.create!(name: "Creative Artists Agency")
+
+bale = Actor.find_by(last_name: "Bale")
+if bale
+  bale.update(agent: caa)
+end
 
 # Prints a header for the movies output
 puts "Movies"
@@ -92,7 +173,26 @@ puts "======"
 puts ""
 
 # Query the movies data and loop through the results to display the movies output.
-# TODO!
+def pad(text, width)
+  text.to_s.ljust(width)
+end
+
+MOVIE_W = 20
+YEAR_W  = 14
+RATE_W  = 6
+STUDIO_W = 20
+
+ACTOR_W = 20
+CHAR_W  = 22
+
+# ===== Movies =====
+puts "# Movies"
+puts "# ======"
+
+for m in Movie.includes(:studio).order(:release_year)
+  line = "#{pad(m.title, MOVIE_W)} #{pad(m.release_year, YEAR_W)} #{pad(m.mpaa_rating, RATE_W)} #{m.studio&.name}"
+  puts line
+end
 
 # Prints a header for the cast output
 puts ""
@@ -101,7 +201,18 @@ puts "========"
 puts ""
 
 # Query the cast data and loop through the results to display the cast output for each movie.
-# TODO!
+Casting
+  .includes(:movie, :actor)
+  .joins(:movie)
+  .order("movies.release_year ASC, castings.id ASC")
+  .each do |c|
+    actor_name = "#{c.actor.first_name} #{c.actor.last_name}"
+    line =
+      "#{pad(c.movie.title, MOVIE_W)}" \
+      "#{pad(actor_name, ACTOR_W)}" \
+      "#{c.character_name}"
+    puts line
+  end
 
 # Prints a header for the agent's list of represented actors output
 puts ""
@@ -110,4 +221,11 @@ puts "===================="
 puts ""
 
 # Query the actor data and loop through the results to display the agent's list of represented actors output.
-# TODO!
+agents = Agent.all
+for agent in agents
+  puts agent.name
+  for actor in agent.actors.order(:last_name, :first_name)
+    puts "- #{actor.first_name} #{actor.last_name}"
+  end
+  puts ""
+end
